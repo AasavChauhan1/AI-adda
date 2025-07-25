@@ -2,32 +2,15 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Icon from '../AppIcon';
 import Button from './Button';
+import { useAuth } from '../../utils/AuthContext';
 
 const UserMenu = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState(null);
   const menuRef = useRef(null);
   const navigate = useNavigate();
+  const { user, profile, signOut, loading } = useAuth();
 
-  // Mock user data
-  const mockUser = {
-    name: 'Alex Johnson',
-    email: 'alex@example.com',
-    avatar: null,
-    role: 'user'
-  };
-
-  useEffect(() => {
-    // Check authentication status from localStorage or API
-    const authStatus = localStorage.getItem('isAuthenticated');
-    const userData = localStorage.getItem('userData');
-    
-    if (authStatus === 'true' && userData) {
-      setIsAuthenticated(true);
-      setUser(JSON.parse(userData));
-    }
-  }, []);
+  const isAuthenticated = !!user;
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -35,7 +18,6 @@ const UserMenu = () => {
         setIsOpen(false);
       }
     };
-
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
@@ -45,11 +27,8 @@ const UserMenu = () => {
     setIsOpen(false);
   };
 
-  const handleLogout = () => {
-    setIsAuthenticated(false);
-    setUser(null);
-    localStorage.removeItem('isAuthenticated');
-    localStorage.removeItem('userData');
+  const handleLogout = async () => {
+    await signOut();
     setIsOpen(false);
     navigate('/ai-tools-marketplace-dashboard');
   };
@@ -129,10 +108,10 @@ const UserMenu = () => {
         className="flex items-center space-x-2 p-2 rounded-md text-text-secondary hover:text-text-primary hover:bg-muted transition-colors duration-150 micro-interaction"
       >
         <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
-          {user?.avatar ? (
+          {profile?.avatar_url ? (
             <img
-              src={user.avatar}
-              alt={user.name}
+              src={profile.avatar_url}
+              alt={profile.full_name || profile.username || 'User'}
               className="w-8 h-8 rounded-full object-cover"
             />
           ) : (
@@ -141,7 +120,7 @@ const UserMenu = () => {
         </div>
         <div className="hidden md:block text-left">
           <div className="text-sm font-medium text-text-primary">
-            {user?.name || 'User'}
+            {profile?.full_name || profile?.username || 'User'}
           </div>
           <div className="text-xs text-text-secondary">
             {user?.email || 'user@example.com'}
@@ -160,10 +139,10 @@ const UserMenu = () => {
           <div className="px-4 py-3 border-b border-border">
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
-                {user?.avatar ? (
+                {profile?.avatar_url ? (
                   <img
-                    src={user.avatar}
-                    alt={user.name}
+                    src={profile.avatar_url}
+                    alt={profile.full_name || profile.username || 'User'}
                     className="w-10 h-10 rounded-full object-cover"
                   />
                 ) : (
@@ -172,7 +151,7 @@ const UserMenu = () => {
               </div>
               <div>
                 <div className="text-sm font-medium text-text-primary">
-                  {user?.name || 'User'}
+                  {profile?.full_name || profile?.username || 'User'}
                 </div>
                 <div className="text-xs text-text-secondary">
                   {user?.email || 'user@example.com'}

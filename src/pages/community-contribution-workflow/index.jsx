@@ -13,9 +13,12 @@ import AnalysisStep from './components/AnalysisStep';
 import ReviewStep from './components/ReviewStep';
 import ConfirmationModal from './components/ConfirmationModal';
 import DraftManager from './components/DraftManager';
+import { aiTools } from '../../utils/supabase';
+import { useAuth } from '../../utils/AuthContext';
 
 const CommunityContributionWorkflow = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState({});
   const [errors, setErrors] = useState({});
@@ -53,7 +56,6 @@ const CommunityContributionWorkflow = () => {
 
   const validateStep = (step) => {
     const newErrors = {};
-
     switch (step) {
       case 1:
         if (!formData.toolName?.trim()) newErrors.toolName = 'Tool name is required';
@@ -75,7 +77,6 @@ const CommunityContributionWorkflow = () => {
         // Review step, no additional validation
         break;
     }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -103,24 +104,37 @@ const CommunityContributionWorkflow = () => {
       setCurrentStep(1);
       return;
     }
-
     setIsSubmitting(true);
-    
     try {
-      // Mock API call - in real app, submit to backend
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Clear form data and show confirmation
+      // Prepare the data for Supabase
+      const submission = {
+        tool_name: formData.toolName,
+        website_url: formData.websiteUrl,
+        category: formData.category,
+        description: formData.detailedDescription,
+        pricing_type: formData.pricingModel,
+        features: formData.features || [],
+        screenshots: (formData.screenshots || []).map(f => f.url),
+        status: 'pending',
+        submitter_id: user?.id,
+        pricing_details: formData.pricingDetails,
+        pros: formData.pros,
+        use_cases: formData.useCases,
+        target_audience: formData.targetAudience,
+        logo: (formData.logo && formData.logo[0]?.url) || null,
+        demo_video_url: formData.demoVideoUrl,
+        live_demo_url: formData.liveDemoUrl,
+      };
+      const { data, error } = await aiTools.submitTool(submission);
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
       setFormData({});
       setShowConfirmation(true);
-      
-      // Update user points (mock)
-      const userData = JSON.parse(localStorage.getItem('userData') || '{}');
-      userData.points = (userData.points || 0) + 75;
-      localStorage.setItem('userData', JSON.stringify(userData));
-      
     } catch (error) {
       console.error('Submission error:', error);
+      alert('There was an error submitting your tool. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -144,7 +158,6 @@ const CommunityContributionWorkflow = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* Breadcrumb */}
         <nav className="flex items-center space-x-2 text-sm text-text-secondary mb-6">
@@ -159,7 +172,6 @@ const CommunityContributionWorkflow = () => {
           <Icon name="ChevronRight" size={16} />
           <span className="text-text-primary font-medium">Submit Tool</span>
         </nav>
-
         <div className="flex flex-col lg:flex-row gap-6">
           {/* Main Content */}
           <div className="flex-1">
@@ -178,13 +190,11 @@ const CommunityContributionWorkflow = () => {
                   <span>Earn 50-100 points</span>
                 </div>
               </div>
-
               <ProgressIndicator
                 currentStep={currentStep}
                 totalSteps={steps.length}
                 steps={steps}
               />
-
               <DraftManager
                 formData={formData}
                 onLoadDraft={handleLoadDraft}
@@ -192,7 +202,6 @@ const CommunityContributionWorkflow = () => {
                 onDeleteDraft={handleDeleteDraft}
               />
             </div>
-
             {/* Step Content */}
             <div className="bg-surface border border-border rounded-lg p-6">
               {CurrentStepComponent && (
@@ -205,7 +214,6 @@ const CommunityContributionWorkflow = () => {
                   isSubmitting={isSubmitting}
                 />
               )}
-
               {/* Navigation Buttons */}
               {currentStep < steps.length && (
                 <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mt-8 pt-6 border-t border-border">
@@ -218,7 +226,6 @@ const CommunityContributionWorkflow = () => {
                   >
                     Previous
                   </Button>
-                  
                   <div className="flex items-center space-x-2">
                     {steps.slice(0, -1).map((step) => (
                       <button
@@ -233,7 +240,6 @@ const CommunityContributionWorkflow = () => {
                       />
                     ))}
                   </div>
-
                   <Button
                     variant="default"
                     onClick={handleNext}
@@ -246,7 +252,6 @@ const CommunityContributionWorkflow = () => {
               )}
             </div>
           </div>
-
           {/* Guidelines Panel */}
           <div className="lg:w-80">
             <div className="sticky top-24">
@@ -258,7 +263,6 @@ const CommunityContributionWorkflow = () => {
             </div>
           </div>
         </div>
-
         {/* Mobile Guidelines */}
         <GuidelinesPanel
           isCollapsed={guidelinesCollapsed}
@@ -266,14 +270,12 @@ const CommunityContributionWorkflow = () => {
           className="lg:hidden"
         />
       </div>
-
       {/* Confirmation Modal */}
       <ConfirmationModal
         isOpen={showConfirmation}
         onClose={() => setShowConfirmation(false)}
         submissionData={formData}
       />
-
       <NavigationTabs />
     </div>
   );

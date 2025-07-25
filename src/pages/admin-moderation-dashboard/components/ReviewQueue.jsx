@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { admin } from '../../../utils/supabase';
 import Icon from '../../../components/AppIcon';
 import Image from '../../../components/AppImage';
 import Button from '../../../components/ui/Button';
@@ -10,79 +11,33 @@ const ReviewQueue = ({ activeTab, onTabChange }) => {
   const [filterBy, setFilterBy] = useState('all');
   const [sortBy, setSortBy] = useState('newest');
   const [searchQuery, setSearchQuery] = useState('');
+  const [pendingSubmissions, setPendingSubmissions] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const pendingSubmissions = [
-    {
-      id: 'sub_001',
-      toolName: 'AI Content Writer Pro',
-      category: 'writing',
-      submittedBy: 'Sarah Chen',
-      submitterEmail: 'sarah.chen@email.com',
-      submissionDate: '2025-01-20T10:30:00Z',
-      description: `Advanced AI writing assistant that helps create high-quality content for blogs, articles, and marketing materials.\n\nKey features include:\n- Multi-language support\n- SEO optimization\n- Plagiarism detection\n- Team collaboration tools`,
-      website: 'https://aicontentwriterpro.com',
-      pricing: 'freemium',
-      features: ['api', 'collaboration', 'analytics'],
-      screenshots: [
-        'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&h=600&fit=crop',
-        'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&h=600&fit=crop'
-      ],
-      qualityScore: 85,
-      status: 'pending',
-      autoChecks: {
-        websiteAccessible: true,
-        validScreenshots: true,
-        descriptionLength: true,
-        duplicateCheck: false
-      }
-    },
-    {
-      id: 'sub_002',
-      toolName: 'VoiceClone AI',
-      category: 'voice',
-      submittedBy: 'Michael Rodriguez',
-      submitterEmail: 'mike.r@email.com',
-      submissionDate: '2025-01-19T15:45:00Z',
-      description: `Revolutionary voice cloning technology that creates realistic voice replicas from just a few minutes of audio samples.\n\nPerfect for:\n- Content creators\n- Audiobook narration\n- Voice-over work\n- Accessibility applications`,
-      website: 'https://voicecloneai.com',
-      pricing: 'paid',
-      features: ['api', 'mobile'],
-      screenshots: [
-        'https://images.unsplash.com/photo-1589903308904-1010c2294adc?w=800&h=600&fit=crop'
-      ],
-      qualityScore: 92,
-      status: 'pending',
-      autoChecks: {
-        websiteAccessible: true,
-        validScreenshots: true,
-        descriptionLength: true,
-        duplicateCheck: true
-      }
-    },
-    {
-      id: 'sub_003',
-      toolName: 'DataViz Generator',
-      category: 'data',
-      submittedBy: 'Emily Watson',
-      submitterEmail: 'emily.watson@email.com',
-      submissionDate: '2025-01-18T09:15:00Z',
-      description: `Automated data visualization tool that transforms raw data into beautiful, interactive charts and dashboards.\n\nSupports multiple data sources and export formats.`,
-      website: 'https://datavizgen.com',
-      pricing: 'free',
-      features: ['integration', 'analytics'],
-      screenshots: [
-        'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&h=600&fit=crop'
-      ],
-      qualityScore: 78,
-      status: 'pending',
-      autoChecks: {
-        websiteAccessible: false,
-        validScreenshots: true,
-        descriptionLength: false,
-        duplicateCheck: true
-      }
-    }
-  ];
+  useEffect(() => {
+    setLoading(true);
+    admin.getPendingSubmissions().then(({ data, error }) => {
+      // Map Supabase fields to UI fields
+      const mapped = (data || []).map(sub => ({
+        id: sub.id,
+        toolName: sub.tool_name,
+        category: sub.category,
+        submittedBy: sub.users?.username || sub.users?.email || sub.submitted_by || 'Unknown',
+        submitterEmail: sub.users?.email || '',
+        submissionDate: sub.created_at,
+        description: sub.description || sub.brief_description || '',
+        website: sub.website_url,
+        pricing: sub.pricing_type,
+        features: sub.features || [],
+        screenshots: sub.screenshots || [],
+        qualityScore: sub.quality_score || 0,
+        status: sub.status,
+        autoChecks: {}, // You can add logic for autoChecks if needed
+      }));
+      setPendingSubmissions(mapped);
+      setLoading(false);
+    });
+  }, []);
 
   const reportedContent = [
     {

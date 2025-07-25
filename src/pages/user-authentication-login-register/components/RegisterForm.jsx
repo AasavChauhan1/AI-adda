@@ -1,71 +1,61 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
 import Input from '../../../components/ui/Input';
-import { Checkbox } from '../../../components/ui/Checkbox';
+import { useAuth } from '../../../utils/AuthContext';
 
 const RegisterForm = () => {
   const navigate = useNavigate();
+  const { signUp } = useAuth();
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
-    username: '',
     email: '',
     password: '',
-    confirmPassword: '',
-    acceptTerms: false
+    username: '',
+    full_name: '',
   });
   const [errors, setErrors] = useState({});
-  const [isLoading, setIsLoading] = useState(false);
-
-  const handleInputChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }));
-    
-    // Clear error when user starts typing
-    if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: '' }));
-    }
-  };
 
   const validateForm = () => {
     const newErrors = {};
-
-    if (!formData.username) {
-      newErrors.username = 'Username is required';
-    } else if (formData.username.length < 3) {
-      newErrors.username = 'Username must be at least 3 characters';
-    } else if (!/^[a-zA-Z0-9_]+$/.test(formData.username)) {
-      newErrors.username = 'Username can only contain letters, numbers, and underscores';
-    }
-
     if (!formData.email) {
       newErrors.email = 'Email is required';
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Please enter a valid email address';
+      newErrors.email = 'Invalid email format';
     }
 
     if (!formData.password) {
       newErrors.password = 'Password is required';
-    } else if (formData.password.length < 8) {
-      newErrors.password = 'Password must be at least 8 characters';
-    } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(formData.password)) {
-      newErrors.password = 'Password must contain at least one uppercase letter, one lowercase letter, and one number';
+    } else if (formData.password.length < 6) {
+      newErrors.password = 'Password must be at least 6 characters';
     }
 
-    if (!formData.confirmPassword) {
-      newErrors.confirmPassword = 'Please confirm your password';
-    } else if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match';
+    if (!formData.username) {
+      newErrors.username = 'Username is required';
     }
 
-    if (!formData.acceptTerms) {
-      newErrors.acceptTerms = 'You must accept the terms and conditions';
+    if (!formData.full_name) {
+      newErrors.full_name = 'Full name is required';
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+    // Clear error when user starts typing
+    if (errors[name]) {
+      setErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }));
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -76,19 +66,16 @@ const RegisterForm = () => {
     setIsLoading(true);
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      // Store authentication data
-      localStorage.setItem('isAuthenticated', 'true');
-      localStorage.setItem('userData', JSON.stringify({
-        name: formData.username,
-        email: formData.email,
-        role: 'user'
-      }));
-
-      // Navigate to dashboard
-      navigate('/ai-tools-marketplace-dashboard');
+      const { error } = await signUp(formData);
+      
+      if (error) {
+        setErrors({
+          general: error.message || 'Registration failed. Please try again.'
+        });
+      } else {
+        // Navigate to dashboard on successful registration
+        navigate('/ai-tools-marketplace-dashboard');
+      }
     } catch (error) {
       setErrors({ general: 'Registration failed. Please try again.' });
     } finally {
@@ -96,121 +83,114 @@ const RegisterForm = () => {
     }
   };
 
-  const handleSocialRegister = (provider) => {
-    console.log(`Social register with ${provider}`);
-    // Mock social registration success
-    localStorage.setItem('isAuthenticated', 'true');
-    localStorage.setItem('userData', JSON.stringify({
-      name: 'Alex Johnson',
-      email: 'alex@example.com',
-      role: 'user'
-    }));
-    navigate('/ai-tools-marketplace-dashboard');
+  const handleSocialRegister = async (provider) => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider,
+      });
+
+      if (error) {
+        setErrors({
+          general: error.message || `${provider} registration failed. Please try again.`
+        });
+      }
+    } catch (error) {
+      setErrors({ general: 'Social registration failed. Please try again.' });
+    }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      {errors.general && (
-        <div className="p-3 bg-error/10 border border-error/20 rounded-md">
-          <p className="text-sm text-error">{errors.general}</p>
-        </div>
-      )}
+    <div className="w-full max-w-md space-y-8">
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <Input
+          label="Full Name"
+          type="text"
+          name="full_name"
+          value={formData.full_name}
+          onChange={handleChange}
+          error={errors.full_name}
+          required
+          autoComplete="name"
+        />
 
-      <Input
-        label="Username"
-        type="text"
-        name="username"
-        placeholder="Choose a username"
-        value={formData.username}
-        onChange={handleInputChange}
-        error={errors.username}
-        description="3+ characters, letters, numbers, and underscores only"
-        required
-      />
+        <Input
+          label="Username"
+          type="text"
+          name="username"
+          value={formData.username}
+          onChange={handleChange}
+          error={errors.username}
+          required
+          autoComplete="username"
+        />
 
-      <Input
-        label="Email Address"
-        type="email"
-        name="email"
-        placeholder="Enter your email"
-        value={formData.email}
-        onChange={handleInputChange}
-        error={errors.email}
-        required
-      />
+        <Input
+          label="Email"
+          type="email"
+          name="email"
+          value={formData.email}
+          onChange={handleChange}
+          error={errors.email}
+          required
+          autoComplete="email"
+        />
 
-      <Input
-        label="Password"
-        type="password"
-        name="password"
-        placeholder="Create a strong password"
-        value={formData.password}
-        onChange={handleInputChange}
-        error={errors.password}
-        description="8+ characters with uppercase, lowercase, and number"
-        required
-      />
+        <Input
+          label="Password"
+          type="password"
+          name="password"
+          value={formData.password}
+          onChange={handleChange}
+          error={errors.password}
+          required
+          autoComplete="new-password"
+        />
 
-      <Input
-        label="Confirm Password"
-        type="password"
-        name="confirmPassword"
-        placeholder="Confirm your password"
-        value={formData.confirmPassword}
-        onChange={handleInputChange}
-        error={errors.confirmPassword}
-        required
-      />
+        {errors.general && (
+          <div className="text-error text-sm">{errors.general}</div>
+        )}
 
-      <Checkbox
-        label="I agree to the Terms of Service and Privacy Policy"
-        name="acceptTerms"
-        checked={formData.acceptTerms}
-        onChange={handleInputChange}
-        error={errors.acceptTerms}
-        required
-      />
+        <Button
+          type="submit"
+          className="w-full"
+          loading={isLoading}
+        >
+          Create Account
+        </Button>
+      </form>
 
-      <Button
-        type="submit"
-        variant="default"
-        fullWidth
-        loading={isLoading}
-        className="mt-6"
-      >
-        Create Account
-      </Button>
-
-      <div className="relative my-6">
+      <div className="relative">
         <div className="absolute inset-0 flex items-center">
           <div className="w-full border-t border-border"></div>
         </div>
         <div className="relative flex justify-center text-sm">
-          <span className="px-2 bg-surface text-text-secondary">Or continue with</span>
+          <span className="px-2 bg-background text-text-secondary">
+            Or continue with
+          </span>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-4">
         <Button
           type="button"
           variant="outline"
           onClick={() => handleSocialRegister('google')}
-          iconName="Chrome"
-          iconPosition="left"
+          className="w-full"
         >
+          <Icon name="Google" className="mr-2" />
           Google
         </Button>
         <Button
           type="button"
           variant="outline"
           onClick={() => handleSocialRegister('github')}
-          iconName="Github"
-          iconPosition="left"
+          className="w-full"
         >
+          <Icon name="Github" className="mr-2" />
           GitHub
         </Button>
       </div>
-    </form>
+    </div>
   );
 };
 

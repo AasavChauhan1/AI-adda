@@ -1,14 +1,20 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Button from 'components/ui/Button';
-import Icon from 'components/AppIcon';
+import Button from '../components/ui/Button';
+import Icon from '../components/AppIcon';
+import { admin } from '../../utils/supabase';
 
 const NotFound = () => {
   const navigate = useNavigate();
+  const [pending, setPending] = useState([]);
 
   const handleGoHome = () => {
     navigate('/');
   };
+
+  useEffect(() => {
+    admin.getPendingSubmissions().then(({ data }) => setPending(data || []));
+  }, []);
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4">
